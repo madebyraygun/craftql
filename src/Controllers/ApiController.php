@@ -4,8 +4,10 @@ namespace markhuot\CraftQL\Controllers;
 
 use Craft;
 use craft\web\Controller;
+use craft\records\User;
 use markhuot\CraftQL\CraftQL;
 use markhuot\CraftQL\Models\Token;
+use yii\web\ForbiddenHttpException;
 
 class ApiController extends Controller
 {
@@ -108,19 +110,36 @@ class ApiController extends Controller
             $data = json_decode($data, true);
             $variables = @$data['variables'];
         }
-        Craft::debug('CraftQL: Parsing request complete');
+        Craft::trace('CraftQL: Parsing request complete');
 
-        Craft::debug('CraftQL: Bootstrapping');
-        $this->graphQl->bootstrap();
-        Craft::debug('CraftQL: Bootstrapping complete');
+        $cacheKey = [$input, $variables];
+        $result = false;
 
-        Craft::debug('CraftQL: Fetching schema');
-        $schema = $this->graphQl->getSchema($token);
-        Craft::debug('CraftQL: Schema built');
+        if (CraftQL::getInstance()->getSettings()->cacheEnabled) {
+            Craft::trace('CraftQL: Retrieving cached result');
+            $result = Craft::$app->getCache()->get($cacheKey);
+        }
 
-        Craft::debug('CraftQL: Executing query');
-        $result = $this->graphQl->execute($schema, $input, $variables);
-        Craft::debug('CraftQL: Execution complete');
+        if ($result === false) {
+            Craft::trace('CraftQL: Bootstrapping');
+            $this->graphQl->bootstrap();
+            Craft::trace('CraftQL: Bootstrapping complete');
+
+            Craft::trace('CraftQL: Fetching schema');
+            $schema = $this->graphQl->getSchema($token);
+            Craft::trace('CraftQL: Schema built');
+
+            Craft::trace('CraftQL: Executing query');
+            $result = $this->graphQl->execute($schema, $input, $variables);
+            Craft::trace('CraftQL: Execution complete');
+
+            if (CraftQL::getInstance()->getSettings()->cacheEnabled) {
+                Craft::trace('CraftQL: Caching result');
+                Craft::$app->getCache()->set($cacheKey, $result, CraftQL::getInstance()->getSettings()->cacheDuration);
+            }
+        } elseif (CraftQL::getInstance()->getSettings()->cacheEnabled) {
+            Craft::trace('CraftQL: Cached result retrieved');
+        }
 
         $customHeaders = CraftQL::getInstance()->getSettings()->headers ?: [];
         foreach ($customHeaders as $key => $value) {
