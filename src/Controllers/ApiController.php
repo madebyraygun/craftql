@@ -174,7 +174,10 @@ class ApiController extends Controller
     }
         
     private function cleanKey($string) {
-        $string = preg_replace('/\s+/', ' ',$string);
+        if ( is_array($string) ) {
+            $string = http_build_query($string, '', ',');
+        }
+        $string = preg_replace('/\s+/', '',$string);
         return $string;
     }
 }
