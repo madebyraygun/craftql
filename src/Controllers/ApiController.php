@@ -14,7 +14,6 @@ class ApiController extends Controller
     protected $allowAnonymous = ['index'];
 
     private $graphQl;
-    private $request;
 
     function __construct(
         $id,
