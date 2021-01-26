@@ -111,7 +111,10 @@ class ApiController extends Controller
         }
         Craft::trace('CraftQL: Parsing request complete');
 
-        $cacheKey = [$input, $variables];
+        $cacheKey = [$this->cleanKey($input), $this->cleanKey($variables)];
+
+        Craft::trace('CraftQL: Cache key ' . json_encode($cacheKey));
+        
         $result = false;
 
         if (CraftQL::getInstance()->getSettings()->cacheEnabled) {
@@ -167,5 +170,13 @@ class ApiController extends Controller
         $response->headers->add('Content-Type', 'application/json; charset=UTF-8');
 
         return $this->asJson($result);
+    }
+        
+    private function cleanKey($string) {
+        if ( is_array($string) ) {
+            $string = http_build_query($string, '', ',');
+        }
+        $string = preg_replace('/\s+/', '',$string);
+        return $string;
     }
 }
